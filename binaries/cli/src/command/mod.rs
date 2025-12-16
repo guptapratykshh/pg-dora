@@ -74,9 +74,9 @@ pub enum Command {
     Runtime(Runtime),
     Coordinator(Coordinator),
     #[clap(subcommand)]
-    Topic(Topic),
-    #[clap(subcommand)]
     Node(Node),
+    #[clap(subcommand)]
+    Topic(Topic),
 
     Version(Version),
 
