@@ -545,6 +545,7 @@ async fn start_inner(
             },
 
             Event::Control(event) => match event {
+
                 ControlEvent::Error(err) => tracing::error!("{err:?}"),
                 ControlEvent::LogSubscribe {
                     dataflow_id,
