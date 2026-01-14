@@ -38,17 +38,24 @@ pub struct Stop {
     #[clap(short, long, action, group = "strategy")]
     force: bool,
     /// Address of the dora coordinator
-    #[clap(long, value_name = "IP", default_value_t = LOCALHOST)]
-    coordinator_addr: IpAddr,
+    #[clap(long, value_name = "IP")]
+    coordinator_addr: Option<IpAddr>,
     /// Port number of the coordinator control server
-    #[clap(long, value_name = "PORT", default_value_t = DORA_COORDINATOR_PORT_CONTROL_DEFAULT)]
-    coordinator_port: u16,
+    #[clap(long, value_name = "PORT")]
+    coordinator_port: Option<u16>,
 }
 
 impl Executable for Stop {
     async fn execute(self) -> eyre::Result<()> {
         default_tracing()?;
-        let client = connect_and_check_version(self.coordinator_addr, self.coordinator_port)
+        use crate::common::resolve_coordinator_addr;
+        let (addr, port) = resolve_coordinator_addr(
+            self.coordinator_addr,
+            self.coordinator_port,
+            DORA_COORDINATOR_PORT_CONTROL_DEFAULT,
+        );
+
+        let client = connect_to_coordinator_rpc(addr, port)
             .await
             .wrap_err("could not connect to dora coordinator")?;
         match (self.uuid, self.name) {

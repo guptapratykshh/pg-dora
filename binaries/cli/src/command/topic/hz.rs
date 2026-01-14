@@ -67,6 +67,7 @@ impl Executable for Hz {
     async fn execute(self) -> eyre::Result<()> {
         let client = self.coordinator.connect_rpc().await?;
         let (dataflow_id, topics) = self.selector.resolve(&client).await?;
+        let (coordinator_addr, _) = self.coordinator.resolve();
 
         let terminal = ratatui::init();
         let result = run_hz(
@@ -74,7 +75,7 @@ impl Executable for Hz {
             self.window,
             dataflow_id,
             topics,
-            self.coordinator.coordinator_addr,
+            coordinator_addr,
         )
         .await;
         result.inspect(|_| {
