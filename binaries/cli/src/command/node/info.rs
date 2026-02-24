@@ -1,14 +1,14 @@
 use clap::Args;
 use dora_message::{
-    cli_to_coordinator::ControlRequest,
-    coordinator_to_cli::{ControlRequestReply, NodeInfo},
+    coordinator_to_cli::NodeInfo,
     id::NodeId,
+    tarpc,
 };
 use eyre::{Context, bail};
 
 use crate::{
     command::{Executable, default_tracing},
-    common::CoordinatorOptions,
+    common::{CoordinatorOptions, rpc},
     formatting::OutputFormat,
 };
 
@@ -44,32 +44,27 @@ pub struct Info {
 }
 
 impl Executable for Info {
-    fn execute(self) -> eyre::Result<()> {
+    async fn execute(self) -> eyre::Result<()> {
         default_tracing()?;
 
-        info(self.coordinator, self.node_id, self.dataflow, self.format)
+        info(self.coordinator, self.node_id, self.dataflow, self.format).await
     }
 }
 
-fn info(
+async fn info(
     coordinator: CoordinatorOptions,
     node_id: NodeId,
     dataflow_filter: Option<String>,
     format: OutputFormat,
 ) -> eyre::Result<()> {
-    let mut session = coordinator.connect()?;
+    let mut client = coordinator.connect_rpc().await?;
 
     // Query all running nodes from coordinator
-    let reply_raw = session
-        .request(&serde_json::to_vec(&ControlRequest::GetNodeInfo).unwrap())
-        .wrap_err("failed to send GetNodeInfo request")?;
-
-    let node_list: Vec<NodeInfo> =
-        match serde_json::from_slice(&reply_raw).wrap_err("failed to parse reply")? {
-            ControlRequestReply::NodeInfoList(list) => list,
-            ControlRequestReply::Error(err) => bail!("{err}"),
-            other => bail!("unexpected reply to GetNodeInfo: {other:?}"),
-        };
+    let node_list = rpc(
+        "get node info",
+        client.get_node_info(tarpc::context::current()),
+    )
+    .await?;
 
     // Filter nodes by ID
     let matching_nodes: Vec<&NodeInfo> = node_list
@@ -130,44 +125,26 @@ fn info(
 
             let selection = inquire::Select::new(
                 "Multiple dataflows have a node with this ID. Choose dataflow:",
-                choices.clone(),
+                choices,
             )
-            .prompt()?;
+            .raw_prompt()?;
 
-            // Find the matching node by comparing the formatted string
+            // Find the matching node by its index
             matching_nodes
-                .iter()
-                .find(|node| {
-                    let dataflow_name = node
-                        .dataflow_name
-                        .as_ref()
-                        .map(|n| n.as_str())
-                        .unwrap_or("<unnamed>");
-                    let formatted = format!("[{}] {}", dataflow_name, node.dataflow_id);
-                    formatted == selection
-                })
-                .expect("selected node not found")
+                .get(selection.index)
+                .expect("Invalid index returned from inquire")
         }
     };
 
     // Now we need to get the full descriptor to show inputs/outputs
     // Query dataflow info to get the descriptor
-    let dataflow_info_raw = session
-        .request(
-            &serde_json::to_vec(&ControlRequest::Info {
-                dataflow_uuid: selected_node.dataflow_id,
-            })
-            .unwrap(),
-        )
-        .wrap_err("failed to send Info request")?;
+    let dataflow_info = rpc(
+        "info",
+        client.info(tarpc::context::current(), selected_node.dataflow_id),
+    )
+    .await?;
 
-    let descriptor = match serde_json::from_slice(&dataflow_info_raw)
-        .wrap_err("failed to parse dataflow info reply")?
-    {
-        ControlRequestReply::DataflowInfo { descriptor, .. } => descriptor,
-        ControlRequestReply::Error(err) => bail!("{err}"),
-        other => bail!("unexpected reply to Info: {other:?}"),
-    };
+    let descriptor = dataflow_info.descriptor;
 
     // Find the node in the descriptor to get inputs/outputs
     let node_descriptor = descriptor
@@ -286,10 +263,17 @@ fn info(
             }
 
             // Add inputs
-            let inputs: Vec<String> = node_descriptor
+            let inputs: std::collections::BTreeMap<String, serde_json::Value> = node_descriptor
                 .inputs
                 .iter()
-                .map(|(id, input)| format!("{} (from {})", id, input.mapping))
+                .map(|(id, input)| {
+                    (
+                        id.to_string(),
+                        serde_json::json!({
+                            "source": input.mapping.to_string(),
+                        }),
+                    )
+                })
                 .collect();
             json_output.insert("inputs".to_string(), serde_json::json!(inputs));
 

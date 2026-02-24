@@ -1742,6 +1742,10 @@ impl Daemon {
                         let _ = reply_sender.send(DaemonReply::Result(Err(err)));
                     }
                     Ok(dataflow) => {
+                        if let Some(node) = dataflow.running_nodes.get_mut(&node_id) {
+                            node.start_time = Some(self.clock.new_timestamp());
+                        }
+
                         Self::subscribe(dataflow, node_id.clone(), event_sender, &self.clock).await;
 
                         let status = dataflow

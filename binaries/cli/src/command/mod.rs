@@ -15,6 +15,7 @@ mod self_;
 mod start;
 mod stop;
 mod system;
+mod topic;
 mod up;
 mod version;
 
@@ -38,6 +39,7 @@ use self_::SelfSubCommand;
 use start::Start;
 use stop::Stop;
 use system::System;
+use topic::Topic;
 use up::Up;
 use version::Version;
 
