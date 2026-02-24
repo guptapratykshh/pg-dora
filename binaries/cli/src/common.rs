@@ -9,12 +9,11 @@ use dora_message::{
     coordinator_to_cli::{DataflowList, DataflowResult},
     tarpc::{self, client, tokio_serde},
 };
-use communication_layer_request_reply::{RequestReplyLayer, TcpLayer, TcpRequestReplyConnection};
 use eyre::{Context, ContextCompat, bail};
 use std::{
     env::current_dir,
     future::Future,
-    net::{IpAddr, SocketAddr},
+    net::IpAddr,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -170,12 +169,6 @@ pub(crate) fn resolve_coordinator_addr(
         .unwrap_or(default_port);
 
     (addr, port)
-}
-
-pub(crate) fn connect_to_coordinator(
-    coordinator_addr: SocketAddr,
-) -> std::io::Result<Box<TcpRequestReplyConnection>> {
-    TcpLayer::new().connect(coordinator_addr)
 }
 
 pub(crate) async fn resolve_dataflow(dataflow: String) -> eyre::Result<PathBuf> {
