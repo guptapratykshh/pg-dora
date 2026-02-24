@@ -1,9 +1,5 @@
 use clap::Args;
-use dora_message::{
-    coordinator_to_cli::NodeInfo,
-    id::NodeId,
-    tarpc,
-};
+use dora_message::{coordinator_to_cli::NodeInfo, id::NodeId, tarpc};
 use eyre::{Context, bail};
 
 use crate::{
