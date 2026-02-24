@@ -143,9 +143,7 @@ impl Executable for Status {
                 Descriptor::blocking_read(&dataflow)?.check(&working_dir)?;
                 check_environment((addr, port).into()).await?
             }
-            None => {
-                check_environment((addr, port).into()).await?
-            }
+            None => check_environment((addr, port).into()).await?,
         }
 
         Ok(())

@@ -70,14 +70,7 @@ impl Executable for Hz {
         let (coordinator_addr, _) = self.coordinator.resolve();
 
         let terminal = ratatui::init();
-        let result = run_hz(
-            terminal,
-            self.window,
-            dataflow_id,
-            topics,
-            coordinator_addr,
-        )
-        .await;
+        let result = run_hz(terminal, self.window, dataflow_id, topics, coordinator_addr).await;
         result.inspect(|_| {
             ratatui::restore();
         })
