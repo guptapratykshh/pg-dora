@@ -3,13 +3,13 @@ use std::{io::Write, net::SocketAddr};
 use super::{Executable, default_tracing};
 use crate::{
     common::{
-        connect_and_check_version, long_context, resolve_dataflow_identifier_interactive, rpc,
+        connect_to_coordinator_rpc, long_context, resolve_dataflow_identifier_interactive, rpc,
     },
     output::print_log_message,
     tcp::AsyncTcpConnection,
 };
 use clap::Args;
-use dora_core::topics::{DORA_COORDINATOR_PORT_CONTROL_DEFAULT, LOCALHOST};
+use dora_core::topics::DORA_COORDINATOR_PORT_CONTROL_DEFAULT;
 use dora_message::{
     cli_to_coordinator::{CliControlClient, LegacyControlRequest},
     common::LogMessage,

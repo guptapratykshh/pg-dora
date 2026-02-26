@@ -65,7 +65,7 @@ pub(crate) fn handle_dataflow_result(
 pub(crate) async fn query_running_dataflows(
     client: &CliControlClient,
 ) -> eyre::Result<DataflowList> {
-    rpc("list dataflows", client.list(tarpc::context::current())).await
+    rpc::<DataflowList, _>("list dataflows", client.list(tarpc::context::current())).await
 }
 
 pub(crate) async fn resolve_dataflow_identifier_interactive(
@@ -130,10 +130,11 @@ pub(crate) async fn connect_to_coordinator_rpc(
     control_port: u16,
 ) -> eyre::Result<CliControlClient> {
     let rpc_port = dora_coordinator_port_rpc(control_port);
-    let transport =
-        tarpc::serde_transport::tcp::connect((addr, rpc_port), tokio_serde::formats::Json::default)
-            .await
-            .context("failed to connect tarpc client to coordinator")?;
+    let transport = tarpc::serde_transport::tcp::connect((addr, rpc_port), || {
+        tokio_serde::formats::Json::default()
+    })
+    .await
+    .context("failed to connect tarpc client to coordinator")?;
     let client = CliControlClient::new(client::Config::default(), transport).spawn();
     Ok(client)
 }
@@ -212,7 +213,7 @@ pub(crate) async fn local_working_dir(
 pub(crate) async fn cli_and_daemon_on_same_machine(
     client: &CliControlClient,
 ) -> eyre::Result<bool> {
-    rpc(
+    rpc::<bool, _>(
         "check if CLI and daemon on same machine",
         client.cli_and_default_daemon_on_same_machine(tarpc::context::current()),
     )
@@ -223,6 +224,4 @@ pub(crate) fn write_events_to() -> Option<PathBuf> {
     std::env::var("DORA_WRITE_EVENTS_TO")
         .ok()
         .map(PathBuf::from)
-}
-
 }

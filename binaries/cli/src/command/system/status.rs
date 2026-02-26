@@ -1,8 +1,5 @@
 use crate::command::{Executable, default_tracing};
-use crate::{
-    LOCALHOST,
-    common::{connect_to_coordinator_rpc, rpc},
-};
+use crate::common::{connect_to_coordinator_rpc, rpc};
 use dora_core::descriptor::DescriptorExt;
 use dora_core::{descriptor::Descriptor, topics::DORA_COORDINATOR_PORT_CONTROL_DEFAULT};
 use dora_message::{
@@ -92,7 +89,7 @@ pub async fn check_environment(coordinator_addr: SocketAddr) -> eyre::Result<()>
 }
 
 pub async fn daemon_running(client: &CliControlClient) -> Result<bool, eyre::ErrReport> {
-    rpc(
+    rpc::<bool, _>(
         "check daemon connection",
         client.daemon_connected(tarpc::context::current()),
     )
@@ -100,7 +97,11 @@ pub async fn daemon_running(client: &CliControlClient) -> Result<bool, eyre::Err
 }
 
 async fn query_running_dataflow_count(client: &CliControlClient) -> Result<usize, eyre::ErrReport> {
-    let list = rpc("list dataflows", client.list(tarpc::context::current())).await?;
+    let list = rpc::<dora_message::coordinator_to_cli::DataflowList, _>(
+        "list dataflows",
+        client.list(tarpc::context::current()),
+    )
+    .await?;
     Ok(list
         .0
         .iter()
